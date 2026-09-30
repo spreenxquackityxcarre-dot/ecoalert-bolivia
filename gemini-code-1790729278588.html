@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>EcoAlert Bolivia</title>
+  <!-- Mapa Interactivo -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    * { box-sizing: border-box; font-family: 'Poppins', sans-serif; transition: all 0.3s ease; }
+    body { 
+      margin: 0; padding: 0; 
+      background: linear-gradient(135deg, #e0f2fe 0%, #e8f5e9 100%); 
+      color: #2d3748; min-height: 100vh; 
+    }
+    
+    header { 
+      background: linear-gradient(90deg, #059669 0%, #10b981 100%); 
+      color: white; text-align: center; padding: 25px 15px;
+      box-shadow: 0 4px 20px rgba(5, 150, 105, 0.3);
+      border-bottom-left-radius: 20px; border-bottom-right-radius: 20px;
+    }
+    header h1 { margin: 0; font-size: 28px; font-weight: 700; }
+
+    .main-wrapper { 
+      display: flex; flex-wrap: wrap; gap: 20px; 
+      max-width: 1100px; margin: 25px auto; padding: 0 15px; 
+    }
+
+    .card { 
+      background: #ffffff; padding: 25px; border-radius: 18px; 
+      box-shadow: 0 10px 25px rgba(0,0,0,0.08); flex: 1; min-width: 320px;
+      border: 1px solid #e5e7eb;
+    }
+    .card:hover { transform: translateY(-3px); box-shadow: 0 15px 30px rgba(0,0,0,0.12); }
+
+    .stats-panel {
+      display: flex; justify-content: space-around;
+      background: #f0fdf4; border: 2px dashed #86efac;
+      padding: 15px; border-radius: 14px; margin-bottom: 20px;
+    }
+    .stat-number { font-size: 26px; font-weight: 700; color: #047857; }
+    .stat-label { font-size: 11px; color: #15803d; font-weight: 600; text-transform: uppercase; }
+
+    label { display: block; margin-top: 14px; font-weight: 600; font-size: 13px; color: #374151; }
+    input, select { 
+      width: 100%; padding: 12px; margin-top: 6px; 
+      border-radius: 10px; border: 2px solid #e5e7eb; background: #f9fafb; outline: none;
+    }
+    input:focus, select:focus { border-color: #10b981; background: #ffffff; transform: scale(1.01); }
+
+    .btn-submit { 
+      background: linear-gradient(90deg, #d97706 0%, #f59e0b 100%); 
+      color: white; font-weight: 700; border: none; padding: 14px;
+      border-radius: 12px; cursor: pointer; margin-top: 20px; width: 100%;
+      box-shadow: 0 4px 15px rgba(217, 119, 6, 0.4); font-size: 15px;
+    }
+    .btn-submit:hover { transform: scale(1.02); background: linear-gradient(90deg, #b45309 0%, #d97706 100%); }
+
+    #map { height: 380px; border-radius: 14px; border: 2px solid #e5e7eb; }
+
+    .alert-box { 
+      display: none; background: #def7ec; padding: 14px; border-radius: 10px; 
+      color: #03543f; margin-top: 15px; font-size: 13px; font-weight: 600;
+      border-left: 5px solid #0e9f6e; animation: slideDown 0.4s ease-out;
+    }
+    @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+    .btn-clean {
+      background: #059669; color: white; border: none; padding: 6px 10px;
+      border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>EcoAlert Bolivia</h1>
+    <p>Plataforma Ciudadana de Georreferenciación e Impacto Ambiental</p>
+  </header>
+
+  <div class="main-wrapper">
+    
+    <div class="card">
+      <h2 style="color: #047857; margin:0;">Registrar Alerta Ambiental</h2>
+      <p style="font-size: 13px; color: #6b7280;">Sube tu reporte ambiental en sencillos pasos.</p>
+      
+      <label>Tipo de incidente:</label>
+      <select id="tipoProblema">
+        <option value="Acumulación de residuos plásticos">Acumulación de residuos plásticos</option>
+        <option value="Microbasural en área pública">Microbasural en área pública</option>
+        <option value="Contaminación en cauce de agua">Contaminación en cauce de agua</option>
+        <option value="Punto de reciclaje lleno">Punto de reciclaje saturado</option>
+      </select>
+
+      <label>Ubicación / Barrio o Referencia:</label>
+      <input type="text" id="ubicacion" placeholder="Ej: Barrio Central, Av. Principal">
+
+      <label>Departamento:</label>
+      <select id="departamento">
+        <option value="-11.0065,-66.0631">Beni (Riberalta / Trinidad)</option>
+        <option value="-16.5000,-68.1193">La Paz</option>
+        <option value="-17.7833,-63.1821">Santa Cruz</option>
+        <option value="-17.3895,-66.1568">Cochabamba</option>
+        <option value="-19.0333,-65.2627">Chuquisaca (Sucre)</option>
+        <option value="-21.5355,-64.7296">Tarija</option>
+        <option value="-17.9833,-67.1500">Oruro</option>
+        <option value="-19.5833,-65.7500">Potosí</option>
+        <option value="-11.0267,-68.7692">Pando</option>
+      </select>
+
+      <label>Fotografía de evidencia:</label>
+      <input type="file" id="fotoEvidencia" accept="image/*">
+
+      <button class="btn-submit" onclick="agregarNuevoReporte()">Publicar Alerta en Tiempo Real</button>
+
+      <div id="alertaExito" class="alert-box">
+        Confirmación: Alerta registrada exitosamente.
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="stats-panel">
+        <div style="text-align:center;">
+          <div class="stat-number" id="totalReportes">3</div>
+          <div class="stat-label">Alertas Activas</div>
+        </div>
+        <div style="text-align:center;">
+          <div class="stat-number" id="totalLimpios">0</div>
+          <div class="stat-label">Áreas Limpiadas</div>
+        </div>
+      </div>
+
+      <h2 style="color: #047857; margin:0 0 10px 0;">Mapa Interactivo</h2>
+      <div id="map"></div>
+    </div>
+
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script>
+    var map = L.map('map').setView([-16.2902, -63.5887], 5);
+
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Tiles &copy; Esri'
+    }).addTo(map);
+
+    var contadorReportes = 3;
+    var contadorLimpios = 0;
+
+    // Marcadores iniciales
+    crearMarcador(-16.5000, -68.1193, "La Paz (Zona Sur)", "Acumulación de plástico.", "m1");
+    crearMarcador(-17.7833, -63.1821, "Santa Cruz (Centro)", "Microbasural detectado.", "m2");
+    crearMarcador(-11.0065, -66.0631, "Riberalta (Beni)", "Limpieza de área verde solicitada.", "m3");
+
+    function crearMarcador(lat, lng, ciudad, problema, idUnico) {
+      var marcador = L.marker([lat, lng]).addTo(map);
+      
+      var contenidoPopup = `
+        <div id="popup-${idUnico}">
+          <b>${ciudad}</b><br>
+          <span>Estado: <strong style="color: #d97706;" id="estado-${idUnico}">Pendiente de limpieza</strong></span><br>
+          <small>${problema}</small><br>
+          <button class="btn-clean" onclick="marcarComoLimpio('${idUnico}')">Marcar como Limpiado</button>
+        </div>
+      `;
+      
+      marcador.bindPopup(contenidoPopup);
+      return marcador;
+    }
+
+    function agregarNuevoReporte() {
+      var direccion = document.getElementById("ubicacion").value || "Ubicación reportada";
+      var problema = document.getElementById("tipoProblema").value;
+      var deptCoords = document.getElementById("departamento").value.split(",");
+      var lat = parseFloat(deptCoords[0]);
+      var lng = parseFloat(deptCoords[1]);
+      var idNuevo = "reporte-" + Date.now();
+
+      // Pequeña variación para que si agregan varios en un mismo departamento, no tapen exactamente el mismo punto
+      var latAjustada = lat + (Math.random() - 0.5) * 0.05;
+      var lngAjustada = lng + (Math.random() - 0.5) * 0.05;
+
+      var nuevoMarcador = crearMarcador(latAjustada, lngAjustada, direccion, problema, idNuevo);
+      nuevoMarcador.openPopup();
+
+      map.flyTo([latAjustada, lngAjustada], 10, { duration: 1.5 });
+
+      contadorReportes++;
+      document.getElementById("totalReportes").innerText = contadorReportes;
+
+      document.getElementById("alertaExito").style.display = "block";
+    }
+
+    function marcarComoLimpio(idUnico) {
+      var elementoEstado = document.getElementById("estado-" + idUnico);
+      if (elementoEstado && elementoEstado.innerText !== "Limpiado / Resuelto") {
+        elementoEstado.innerText = "Limpiado / Resuelto";
+        elementoEstado.style.color = "#059669";
+
+        if (contadorReportes > 0) contadorReportes--;
+        contadorLimpios++;
+
+        document.getElementById("totalReportes").innerText = contadorReportes;
+        document.getElementById("totalLimpios").innerText = contadorLimpios;
+      }
+    }
+  </script>
+
+</body>
+</html>
